@@ -15,6 +15,7 @@ class ActivityTracker:
         event_name: str,
         model_class: Type[Model],
         tracked_fields: List[str],
+        additional_fields: List[str],
     ):
         """Attaches to the model_class post_save signal,
         which emits the appropiate activity event to the activities service"""
@@ -49,11 +50,18 @@ class ActivityTracker:
                             "to": data[field],
                         }
 
+                data_payload = {
+                    key: data[key] for key in additional_fields if key in data
+                }
+
                 payload = {
                     "instance_id": instance.id,
                     "profile_id": instance.get_owner_profile_id(),
                     "timestamp": time.time(),
-                    "changed": changed_fields_payload,
+                    "properties": {
+                        "changed": changed_fields_payload,
+                        "data": data_payload,
+                    },
                 }
                 logging.info(f"Emit {event_name}: " + str(payload))
 
