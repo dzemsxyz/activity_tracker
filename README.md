@@ -19,8 +19,8 @@ def ready(self) -> None:
     from activity_tracker.utils import declare_activity_event
     from orders.models import Order
 
-    # event name, model class, fields to track
-    declare_activity_event("order-status", Order, ("status",))
+    # event name, model class, fields to track, additional fields
+    declare_activity_event("order-status", Order, ("status",), ("name",))
 ```
 
 ## Requirements
