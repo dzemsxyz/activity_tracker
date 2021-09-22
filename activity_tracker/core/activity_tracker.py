@@ -3,7 +3,8 @@ import time
 from typing import List, Type
 
 from django.db.models.base import Model
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
+from events_library.domain.constants import CudEvent
 from events_library.utils import emit
 from rest_framework.serializers import ModelSerializer
 
@@ -59,6 +60,9 @@ class ActivityTracker:
                     "profile_id": instance.get_owner_profile_id(),
                     "timestamp": time.time(),
                     "properties": {
+                        "cud_operation": CudEvent.CREATED
+                        if created
+                        else CudEvent.UPDATED,
                         "changed": changed_fields_payload,
                         "data": data_payload,
                     },
@@ -67,4 +71,24 @@ class ActivityTracker:
 
                 emit(event_name, payload)
 
+        def handle_delete(instance, **kwargs):
+
+            data = GenericSerializer(instance).data
+            data_payload = {key: data[key] for key in additional_fields if key in data}
+
+            payload = {
+                "instance_id": instance.id,
+                "profile_id": instance.get_owner_profile_id(),
+                "timestamp": time.time(),
+                "properties": {
+                    "cud_operation": CudEvent.DELETED,
+                    "changed": {},
+                    "data": data_payload,
+                },
+            }
+            logging.info(f"Emit {event_name}: " + str(payload))
+
+            emit(event_name, payload)
+
         post_save.connect(handle_upsert, sender=model_class, weak=False)
+        post_delete.connect(handle_delete, sender=model_class, weak=False)
